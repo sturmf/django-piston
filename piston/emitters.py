@@ -184,10 +184,12 @@ class Emitter(object):
                 # use the list_fields from the base handler and accept that
                 # the nested models won't appear properly
                 # Refs #157
-                if handler:
+                if handler and not fields:
                     fields = getattr(handler, 'fields')    
                 
-                if not fields or hasattr(handler, 'fields'):
+                # Only use an existing handler's field spec, if we haven't
+                # defined our own.                
+                if not fields and hasattr(handler, 'fields'):
                     """
                     Fields was not specified, try to find teh correct
                     version in the typemapper we were sent.
