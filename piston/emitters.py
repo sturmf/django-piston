@@ -187,8 +187,6 @@ class Emitter(object):
                 if handler and not fields:
                     fields = getattr(handler, 'fields')    
                 
-                # Only use an existing handler's field spec, if we haven't
-                # defined our own.                
                 if not fields and hasattr(handler, 'fields'):
                     """
                     Fields was not specified, try to find teh correct

@@ -58,28 +58,7 @@ class rc_factory(object):
             _is_string/_base_content_is_iter flag is updated when the
             _set_content method (via the content property) is called
             """
-            def _set_content(self, content):
-                """
-                Set the _container and _is_string /
-                _base_content_is_iter properties based on the type of
-                the value parameter. This logic is in the construtor
-                for HttpResponse, but doesn't get repeated when
-                setting HttpResponse.content although this bug report
-                (feature request) suggests that it should:
-                http://code.djangoproject.com/ticket/9403
-                """
-                is_string = False
-                if not isinstance(content, basestring) and hasattr(content, '__iter__'):
-                    self._container = content
-                else:
-                    self._container = [content]
-                    is_string = True
-                if django.VERSION >= (1, 4):
-                    self._base_content_is_iter = not is_string
-                else:
-                    self._is_string = is_string
-
-            content = property(HttpResponse._get_content, _set_content)            
+            content = HttpResponse.content
 
         return HttpResponseWrapper(r, content_type='text/plain', status=c)
     
@@ -263,7 +242,7 @@ class Mimer(object):
             
             if loadee:
                 try:
-                    self.request.data = loadee(self.request.raw_post_data)
+                    self.request.data = loadee(self.request.body)
                         
                     # Reset both POST and PUT from request, as its
                     # misleading having their presence around.

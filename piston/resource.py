@@ -9,6 +9,7 @@ from django.conf import settings
 from django.core.mail import send_mail, EmailMessage
 from django.db.models.query import QuerySet
 from django.http import Http404
+from django.utils import six
 
 try:
     import mimeparse
@@ -207,12 +208,7 @@ class Resource(object):
         # content
         if self._use_emitter(result):
             status_code = result.status_code
-            # Note: We can't use result.content here because that
-            # method attempts to convert the content into a string
-            # which we don't want.  when
-            # _is_string/_base_content_is_iter is False _container is
-            # the raw data
-            result = result._container
+            result = result.content
 
         srl = emitter(result, typemapper, handler, fields, anonymous)
 
@@ -223,11 +219,16 @@ class Resource(object):
             before sending it to the client. Won't matter for
             smaller datasets, but larger will have an impact.
             """
-            if self.stream: stream = srl.stream_render(request)
-            else: stream = srl.render(request)
+            if self.stream:
+                stream = srl.stream_render(request)
+            else:
+                stream = srl.render(request)
 
             if not isinstance(stream, HttpResponse):
-                resp = HttpResponse(stream, content_type=ct, status=status_code)
+                if django.VERSION >= (1, 7):
+                    resp = HttpResponse(stream, content_type=ct, status=status_code)
+                else:
+                    resp = HttpResponse(stream, mimetype=ct, status=status_code)
             else:
                 resp = stream
 
@@ -239,11 +240,20 @@ class Resource(object):
 
     @staticmethod
     def _use_emitter(result):
-        """True iff result is a HttpResponse and contains non-string content."""
+        """True if result is a HttpResponse and contains non-string content."""
         if not isinstance(result, HttpResponse):
             return False
         elif django.VERSION >= (1, 4):
-            return result._base_content_is_iter
+            if result.status_code in {304, 401}:
+                # taken from Django (_base_content_iter = False)
+                return False
+            # taken from Django
+            value = result._container
+            #if hasattr(value, '__iter__') and not isinstance(value, (bytes, six.string_types)):
+            if not isinstance(value, (bytes, six.string_types)):
+                return True
+            else:
+                return False
         else:
             return not result._is_string
 
